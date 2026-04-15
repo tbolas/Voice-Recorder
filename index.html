@@ -148,20 +148,17 @@
     reader.onloadend = function() {
       fetch(APPS_SCRIPT_URL, {
         method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           name: name,
           promptText: promptText,
           dataURI: reader.result
         })
       })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.success) {
-          document.getElementById('status').textContent = 'Submitted! Thank you.';
-        } else {
-          document.getElementById('status').textContent = 'Error: ' + data.error;
-          document.getElementById('submitBtn').disabled = false;
-        }
+      .then(function() {
+        document.getElementById('status').textContent = 'Submitted! Thank you.';
+        document.getElementById('submitBtn').disabled = false;
       })
       .catch(function(err) {
         document.getElementById('status').textContent = 'Upload failed: ' + err.message;
