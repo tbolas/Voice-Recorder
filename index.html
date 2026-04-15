@@ -210,7 +210,7 @@ var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1Dwl
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           action: 'submit',
-          bookName: BOOK_NAME,
+          bookName: currentChunk.bookName,
           chunkNumber: currentChunk.chunkNumber,
           personName: name,
           lumicash: lumicash,
