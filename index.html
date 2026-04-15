@@ -181,6 +181,8 @@ var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1Dwl
     document.getElementById('audioPlayback').src = url;
     document.getElementById('audioPlayback').style.display = 'block';
     document.getElementById('submitBtn').style.display = 'inline-block';
+    document.getElementById('submitBtn').disabled = false;
+
   }
 
   function startTimer() {
