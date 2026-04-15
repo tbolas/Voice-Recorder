@@ -57,7 +57,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
 <script>
   var APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL';
-  var BOOK_NAME = 'YOUR_BOOK_NAME';
 
   var savedName = localStorage.getItem('recorderName') || '';
   var savedLumicash = localStorage.getItem('recorderLumicash') || '';
@@ -99,7 +98,7 @@
     document.getElementById('recordBtn').textContent = 'Start recording';
     document.getElementById('recordBtn').classList.remove('recording');
 
-    jsonp({ action: 'next', bookName: BOOK_NAME }, function(data) {
+    jsonp({ action: 'next'}, function(data) {
       if (data.error) {
         document.getElementById('loadingMsg').textContent = data.error === 'No chunks available'
           ? 'All passages have been recorded. Thank you!'
