@@ -7,6 +7,8 @@
 <style>
   body { font-family: Arial, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; color: #333; }
   h2 { margin-bottom: 4px; }
+  .instructions { background: #e8f4fd; border-left: 4px solid #4a90d9; padding: 14px 18px;
+                  border-radius: 4px; font-size: 15px; line-height: 1.6; margin: 16px 0 24px; }
   .prompt-box { background: #f5f5f5; border-left: 4px solid #4a90d9; padding: 16px 20px;
                 border-radius: 4px; font-size: 18px; line-height: 1.6; margin: 20px 0; }
   label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 6px; }
@@ -19,39 +21,103 @@
   #submitBtn:disabled { background: #aaa; cursor: default; }
   .timer { font-size: 13px; color: #e53935; margin-top: 8px; min-height: 20px; }
   #status { margin-top: 16px; font-size: 14px; color: #555; }
+  #chunkInfo { font-size: 13px; color: #888; margin-bottom: 8px; }
   audio { display: block; margin: 16px 0; width: 100%; }
+  #loadingMsg { font-size: 15px; color: #555; margin-top: 20px; }
 </style>
 </head>
 <body>
 
-<h2>Voice Recording</h2>
-<p style="color:#555;font-size:14px;">Enter your name, read the passage aloud, then submit.</p>
+<h2>Voice Recording Project</h2>
+
+<div class="instructions">
+  <!-- EDIT INSTRUCTIONS HERE -->
+  Thank you for participating in this voice recording project. Please enter your name and Lumicash number below — these will be remembered on this device for future sessions. Read the passage aloud clearly, then submit your recording. A new passage will be assigned each time you complete one.
+</div>
 
 <label for="nameField">Your name</label>
 <input type="text" id="nameField" placeholder="Full name" />
 
-<label>Read this passage aloud:</label>
-<div class="prompt-box" id="promptDisplay"></div>
+<label for="lumicashField">Lumicash number (8 digits)</label>
+<input type="text" id="lumicashField" placeholder="12345678" maxlength="8" pattern="[0-9]{8}" />
 
-<button class="btn" id="recordBtn" onclick="toggleRecord()">Start recording</button>
-<div class="timer" id="timerDisplay"></div>
-<audio id="audioPlayback" controls style="display:none"></audio>
-<br>
-<button class="btn" id="submitBtn" onclick="submitForm()">Submit recording</button>
+<div id="loadingMsg">Loading next passage...</div>
+<div id="formArea" style="display:none">
+  <label>Read this passage aloud:</label>
+  <div id="chunkInfo"></div>
+  <div class="prompt-box" id="promptDisplay"></div>
+  <button class="btn" id="recordBtn" onclick="toggleRecord()">Start recording</button>
+  <div class="timer" id="timerDisplay"></div>
+  <audio id="audioPlayback" controls style="display:none"></audio>
+  <br>
+  <button class="btn" id="submitBtn" onclick="submitForm()">Submit recording</button>
+</div>
 <div id="status"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
 <script>
-  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz5qt-VGlU3iG3KvR8UZLmRLKYubN94FgtN1j6Rmw5yMWTaflXOKAbF4tKqnvTVRBld1A/exec';
+  var APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL';
+  var BOOK_NAME = 'YOUR_BOOK_NAME'; // must match sheet tab name exactly
 
-  var PROMPTS = [
-    "Ubu rero, ubugingo bwanjye butera inkunga. Nzabona icyo nshaka, kandi sinzigera nshidikanya ku magambo y'ukuri.",
-    "The quick brown fox jumps over the lazy dog. She sells seashells by the seashore."
-  ];
+  // localStorage prefill
+  var savedName = localStorage.getItem('recorderName') || '';
+  var savedLumicash = localStorage.getItem('recorderLumicash') || '';
+  document.getElementById('nameField').value = savedName;
+  document.getElementById('lumicashField').value = savedLumicash;
 
-  var promptText = PROMPTS[Math.floor(Math.random() * PROMPTS.length)];
-  document.getElementById('promptDisplay').textContent = promptText;
+  document.getElementById('nameField').addEventListener('change', function() {
+    localStorage.setItem('recorderName', this.value.trim());
+  });
+  document.getElementById('lumicashField').addEventListener('change', function() {
+    localStorage.setItem('recorderLumicash', this.value.trim());
+  });
 
+  var currentChunk = null;
+
+  // Claim a chunk on page load
+  function loadChunk() {
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'claim', bookName: BOOK_NAME })
+    })
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      try {
+        var data = JSON.parse(text);
+        if (data.error) {
+          document.getElementById('loadingMsg').textContent = data.error === 'No chunks available'
+            ? 'All passages have been recorded. Thank you!'
+            : 'Error: ' + data.error;
+          return;
+        }
+        currentChunk = data;
+        document.getElementById('promptDisplay').textContent = data.promptText;
+        document.getElementById('chunkInfo').textContent = 'Passage ' + data.chunkNumber;
+        document.getElementById('loadingMsg').style.display = 'none';
+        document.getElementById('formArea').style.display = 'block';
+      } catch(e) {
+        document.getElementById('loadingMsg').textContent = 'Error loading passage.';
+      }
+    })
+    .catch(function() {
+      document.getElementById('loadingMsg').textContent = 'Could not connect. Please refresh.';
+    });
+  }
+
+  // Release chunk if user leaves without submitting
+  window.addEventListener('beforeunload', function() {
+    if (currentChunk && !submitted) {
+      navigator.sendBeacon(APPS_SCRIPT_URL, JSON.stringify({
+        action: 'release',
+        bookName: BOOK_NAME,
+        chunkNumber: currentChunk.chunkNumber
+      }));
+    }
+  });
+
+  var submitted = false;
   var audioContext, mediaStream, scriptProcessor, mp3Encoder;
   var mp3Chunks = [];
   var isRecording = false;
@@ -71,24 +137,14 @@
       .then(function(stream) {
         mediaStream = stream;
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        audioContext.resume(); // add this line
+        audioContext.resume();
         var sampleRate = audioContext.sampleRate;
         mp3Encoder = new lamejs.Mp3Encoder(1, sampleRate, 128);
-
         var source = audioContext.createMediaStreamSource(stream);
         scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
-
         scriptProcessor.onaudioprocess = function(e) {
           if (!isRecording) return;
           var samples = e.inputBuffer.getChannelData(0);
-          
-          // debug: log max amplitude
-          var max = 0;
-          for (var i = 0; i < samples.length; i++) {
-            if (Math.abs(samples[i]) > max) max = Math.abs(samples[i]);
-          }
-          console.log('max amplitude:', max);
-          
           var int16 = new Int16Array(samples.length);
           for (var i = 0; i < samples.length; i++) {
             int16[i] = Math.max(-32768, Math.min(32767, samples[i] * 32768));
@@ -96,11 +152,8 @@
           var encoded = mp3Encoder.encodeBuffer(int16);
           if (encoded.length > 0) mp3Chunks.push(encoded);
         };
-
-
         source.connect(scriptProcessor);
         scriptProcessor.connect(audioContext.destination);
-
         isRecording = true;
         document.getElementById('recordBtn').textContent = 'Stop recording';
         document.getElementById('recordBtn').classList.add('recording');
@@ -120,14 +173,11 @@
     document.getElementById('timerDisplay').textContent = '';
     document.getElementById('recordBtn').textContent = 'Re-record';
     document.getElementById('recordBtn').classList.remove('recording');
-
     if (scriptProcessor) scriptProcessor.disconnect();
     if (mediaStream) mediaStream.getTracks().forEach(function(t) { t.stop(); });
     if (audioContext) audioContext.close();
-
     var final = mp3Encoder.flush();
     if (final.length > 0) mp3Chunks.push(final);
-
     var blob = new Blob(mp3Chunks, { type: 'audio/mp3' });
     var url = URL.createObjectURL(blob);
     document.getElementById('audioPlayback').src = url;
@@ -147,7 +197,9 @@
 
   function submitForm() {
     var name = document.getElementById('nameField').value.trim();
+    var lumicash = document.getElementById('lumicashField').value.trim();
     if (!name) { alert('Please enter your name.'); return; }
+    if (!/^[0-9]{8}$/.test(lumicash)) { alert('Please enter a valid 8-digit Lumicash number.'); return; }
     if (!mp3Chunks.length) { alert('Please record audio first.'); return; }
 
     document.getElementById('status').textContent = 'Uploading...';
@@ -161,14 +213,22 @@
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
-          name: name,
-          promptText: promptText,
+          action: 'submit',
+          bookName: BOOK_NAME,
+          chunkNumber: currentChunk.chunkNumber,
+          personName: name,
+          lumicash: lumicash,
           dataURI: reader.result
         })
       })
       .then(function() {
-        document.getElementById('status').textContent = 'Submitted! Thank you.';
-        document.getElementById('submitBtn').disabled = false;
+        submitted = true;
+        document.getElementById('status').textContent = 'Submitted! Loading next passage...';
+        document.getElementById('submitBtn').style.display = 'none';
+        document.getElementById('audioPlayback').style.display = 'none';
+        mp3Chunks = [];
+        submitted = false;
+        loadChunk();
       })
       .catch(function(err) {
         document.getElementById('status').textContent = 'Upload failed: ' + err.message;
@@ -177,6 +237,8 @@
     };
     reader.readAsDataURL(blob);
   }
+
+  loadChunk();
 </script>
 </body>
 </html>
