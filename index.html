@@ -81,6 +81,14 @@
         scriptProcessor.onaudioprocess = function(e) {
           if (!isRecording) return;
           var samples = e.inputBuffer.getChannelData(0);
+          
+          // debug: log max amplitude
+          var max = 0;
+          for (var i = 0; i < samples.length; i++) {
+            if (Math.abs(samples[i]) > max) max = Math.abs(samples[i]);
+          }
+          console.log('max amplitude:', max);
+          
           var int16 = new Int16Array(samples.length);
           for (var i = 0; i < samples.length; i++) {
             int16[i] = Math.max(-32768, Math.min(32767, samples[i] * 32768));
@@ -88,6 +96,7 @@
           var encoded = mp3Encoder.encodeBuffer(int16);
           if (encoded.length > 0) mp3Chunks.push(encoded);
         };
+
 
         source.connect(scriptProcessor);
         scriptProcessor.connect(audioContext.destination);
