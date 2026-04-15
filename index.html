@@ -75,34 +75,38 @@
   var currentChunk = null;
 
   // Claim a chunk on page load
+  function jsonp(params, callback) {
+    var cbName = 'cb_' + Date.now();
+    var url = APPS_SCRIPT_URL + '?' + Object.keys(params).map(function(k) {
+      return k + '=' + encodeURIComponent(params[k]);
+    }).join('&') + '&callback=' + cbName;
+    window[cbName] = function(data) {
+      delete window[cbName];
+      document.head.removeChild(script);
+      callback(data);
+    };
+    var script = document.createElement('script');
+    script.src = url;
+    document.head.appendChild(script);
+  }
+
   function loadChunk() {
-    fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'claim', bookName: BOOK_NAME })
-    })
-    .then(function(r) { return r.text(); })
-    .then(function(text) {
-      try {
-        var data = JSON.parse(text);
-        if (data.error) {
-          document.getElementById('loadingMsg').textContent = data.error === 'No chunks available'
-            ? 'All passages have been recorded. Thank you!'
-            : 'Error: ' + data.error;
-          return;
-        }
-        currentChunk = data;
-        document.getElementById('promptDisplay').textContent = data.promptText;
-        document.getElementById('chunkInfo').textContent = 'Passage ' + data.chunkNumber;
-        document.getElementById('loadingMsg').style.display = 'none';
-        document.getElementById('formArea').style.display = 'block';
-      } catch(e) {
-        document.getElementById('loadingMsg').textContent = 'Error loading passage.';
+    document.getElementById('loadingMsg').style.display = 'block';
+    document.getElementById('loadingMsg').textContent = 'Loading next passage...';
+    document.getElementById('formArea').style.display = 'none';
+    document.getElementById('status').textContent = '';
+    jsonp({ action: 'claim', bookName: BOOK_NAME }, function(data) {
+      if (data.error) {
+        document.getElementById('loadingMsg').textContent = data.error === 'No chunks available'
+          ? 'All passages have been recorded. Thank you!'
+          : 'Error: ' + data.error;
+        return;
       }
-    })
-    .catch(function() {
-      document.getElementById('loadingMsg').textContent = 'Could not connect. Please refresh.';
+      currentChunk = data;
+      document.getElementById('promptDisplay').textContent = data.promptText;
+      document.getElementById('chunkInfo').textContent = 'Passage ' + data.chunkNumber;
+      document.getElementById('loadingMsg').style.display = 'none';
+      document.getElementById('formArea').style.display = 'block';
     });
   }
 
