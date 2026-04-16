@@ -75,7 +75,21 @@ var currentChunk = null;
   var chunkQueue = [];
   var uploadQueue = [];
   var isUploading = false;
-
+  
+function jsonp(params, callback) {
+    var cbName = 'cb_' + Date.now();
+    var url = APPS_SCRIPT_URL + '?' + Object.keys(params).map(function(k) {
+      return k + '=' + encodeURIComponent(params[k]);
+    }).join('&') + '&callback=' + cbName;
+    window[cbName] = function(data) {
+      delete window[cbName];
+      document.head.removeChild(script);
+      callback(data);
+    };
+    var script = document.createElement('script');
+    script.src = url;
+    document.head.appendChild(script);
+  }
   function loadChunks(count) {
     jsonp({ action: 'next', count: count || 10 }, function(data) {
       if (data.error) {
