@@ -256,7 +256,15 @@ function submitForm() {
     // immediately show next chunk
     showNextChunk();
   }
-
+  
+ window.addEventListener('beforeunload', function(e) {
+    if (uploadQueue.length > 0) {
+      var msg = 'Your recordings are still uploading. Please keep this tab open until uploads complete.';
+      e.preventDefault();
+      e.returnValue = msg;
+      return msg;
+    }
+  });
   loadChunks(10);
 </script>
 </body>
