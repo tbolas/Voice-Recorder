@@ -71,48 +71,69 @@ var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1Dwl
     localStorage.setItem('recorderLumicash', this.value.trim());
   });
 
-  var currentChunk = null;
-  var submitted = false;
+var currentChunk = null;
+  var chunkQueue = [];
+  var uploadQueue = [];
+  var isUploading = false;
 
-  function jsonp(params, callback) {
-    var cbName = 'cb_' + Date.now();
-    var url = APPS_SCRIPT_URL + '?' + Object.keys(params).map(function(k) {
-      return k + '=' + encodeURIComponent(params[k]);
-    }).join('&') + '&callback=' + cbName;
-    window[cbName] = function(data) {
-      delete window[cbName];
-      document.head.removeChild(script);
-      callback(data);
-    };
-    var script = document.createElement('script');
-    script.src = url;
-    document.head.appendChild(script);
-  }
-
-  function loadChunk() {
-    
-    document.getElementById('loadingMsg').style.display = 'block';
-    document.getElementById('loadingMsg').textContent = 'Loading next passage...';
-    document.getElementById('formArea').style.display = 'none';
-    document.getElementById('status').textContent = '';
-    document.getElementById('audioPlayback').style.display = 'none';
-    mp3Chunks = [];
-    document.getElementById('recordBtn').textContent = 'Start recording';
-    document.getElementById('recordBtn').classList.remove('recording');
-    document.getElementById('submitBtn').disabled = false;
-
-    jsonp({ action: 'next'}, function(data) {
+  function loadChunks(count) {
+    jsonp({ action: 'next', count: count || 10 }, function(data) {
       if (data.error) {
-        document.getElementById('loadingMsg').textContent = data.error === 'No chunks available'
-          ? 'All passages have been recorded. Thank you!'
-          : 'Error: ' + data.error;
+        if (chunkQueue.length === 0) {
+          document.getElementById('loadingMsg').textContent = data.error === 'No chunks available'
+            ? 'All passages have been recorded. Thank you!'
+            : 'Error: ' + data.error;
+        }
         return;
       }
-      currentChunk = data;
-      document.getElementById('promptDisplay').textContent = data.promptText;
-      document.getElementById('chunkInfo').textContent = 'Passage ' + data.chunkNumber;
-      document.getElementById('loadingMsg').style.display = 'none';
-      document.getElementById('formArea').style.display = 'block';
+      chunkQueue = chunkQueue.concat(data.chunks);
+      if (!currentChunk) showNextChunk();
+    });
+  }
+
+  function showNextChunk() {
+    if (chunkQueue.length === 0) {
+      document.getElementById('loadingMsg').style.display = 'block';
+      document.getElementById('loadingMsg').textContent = 'Loading next passage...';
+      document.getElementById('formArea').style.display = 'none';
+      loadChunks(10);
+      return;
+    }
+    currentChunk = chunkQueue.shift();
+    document.getElementById('promptDisplay').textContent = currentChunk.promptText;
+    document.getElementById('chunkInfo').textContent = 'Passage ' + currentChunk.chunkNumber;
+    document.getElementById('loadingMsg').style.display = 'none';
+    document.getElementById('formArea').style.display = 'block';
+    document.getElementById('audioPlayback').style.display = 'none';
+    document.getElementById('submitBtn').style.display = 'none';
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('recordBtn').textContent = 'Start recording';
+    document.getElementById('recordBtn').classList.remove('recording');
+    document.getElementById('status').textContent = '';
+    mp3Chunks = [];
+
+    // refill queue in background when running low
+    if (chunkQueue.length <= 5) loadChunks(10);
+  }
+
+  function processUploadQueue() {
+    if (isUploading || uploadQueue.length === 0) return;
+    isUploading = true;
+    var item = uploadQueue[0];
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(item)
+    })
+    .then(function() {
+      uploadQueue.shift();
+      isUploading = false;
+      processUploadQueue();
+    })
+    .catch(function() {
+      isUploading = false;
+      setTimeout(processUploadQueue, 5000); // retry after 5s on failure
     });
   }
 
@@ -195,48 +216,34 @@ var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1Dwl
     }, 1000);
   }
 
-  function submitForm() {
+function submitForm() {
     var name = document.getElementById('nameField').value.trim();
     var lumicash = document.getElementById('lumicashField').value.trim();
     if (!name) { alert('Please enter your name.'); return; }
     if (!/^[0-9]{8}$/.test(lumicash)) { alert('Please enter a valid 8-digit Lumicash number.'); return; }
     if (!mp3Chunks.length) { alert('Please record audio first.'); return; }
 
-    document.getElementById('status').textContent = 'Uploading...';
-    document.getElementById('submitBtn').disabled = true;
-
     var blob = new Blob(mp3Chunks, { type: 'audio/mp3' });
     var reader = new FileReader();
+    var submittedChunk = currentChunk;
     reader.onloadend = function() {
-      fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-          action: 'submit',
-          bookName: currentChunk.bookName,
-          chunkNumber: currentChunk.chunkNumber,
-          personName: name,
-          lumicash: lumicash,
-          dataURI: reader.result
-        })
-      })
-      .then(function() {
-        submitted = true;
-        document.getElementById('status').textContent = 'Submitted! Loading next passage...';
-        document.getElementById('submitBtn').style.display = 'none';
-        submitted = false;
-        loadChunk();
-      })
-      .catch(function(err) {
-        document.getElementById('status').textContent = 'Upload failed: ' + err.message;
-        document.getElementById('submitBtn').disabled = false;
+      uploadQueue.push({
+        action: 'submit',
+        bookName: submittedChunk.bookName,
+        chunkNumber: submittedChunk.chunkNumber,
+        personName: name,
+        lumicash: lumicash,
+        dataURI: reader.result
       });
+      processUploadQueue();
     };
     reader.readAsDataURL(blob);
+
+    // immediately show next chunk
+    showNextChunk();
   }
 
-  loadChunk();
+  loadChunks(10);
 </script>
 </body>
 </html>
