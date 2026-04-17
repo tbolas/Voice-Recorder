@@ -51,6 +51,11 @@ Please read the sentence below, first to make sure you understand it, then press
   <audio id="audioPlayback" controls style="display:none"></audio>
   <br>
   <button class="btn" id="submitBtn" onclick="submitForm()">Submit recording</button>
+  <button class="btn" id="errorBtn" onclick="toggleErrorBox()" style="background:#888;color:white;display:none;margin-top:8px;">Report an error with this text</button>
+<div id="errorBox" style="display:none;margin-top:10px;">
+  <textarea id="errorText" placeholder="Describe the problem with this text..." style="width:100%;padding:10px;font-size:14px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;height:80px;"></textarea>
+  <button class="btn" onclick="submitError()" style="background:#e53935;color:white;margin-top:8px;">Submit error report</button>
+</div>
 </div>
 <div id="status"></div>
 
@@ -105,7 +110,7 @@ function jsonp(params, callback) {
     });
   }
 
-  function showNextChunk() {
+ function showNextChunk() {
     if (chunkQueue.length === 0) {
       document.getElementById('loadingMsg').style.display = 'block';
       document.getElementById('loadingMsg').textContent = 'Loading next passage...';
@@ -124,9 +129,36 @@ function jsonp(params, callback) {
     document.getElementById('recordBtn').textContent = 'Start recording';
     document.getElementById('recordBtn').classList.remove('recording');
     document.getElementById('status').textContent = '';
+    document.getElementById('errorBtn').style.display = 'inline-block';
+    document.getElementById('errorBox').style.display = 'none';
+    document.getElementById('errorText').value = '';
     mp3Chunks = [];
 
-    // refill queue in background when running low
+    function toggleErrorBox() {
+      var box = document.getElementById('errorBox');
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function submitError() {
+      var errorText = document.getElementById('errorText').value.trim();
+      if (!errorText) { alert('Please describe the problem.'); return; }
+      var chunk = currentChunk;
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'reportError',
+          bookName: chunk.bookName,
+          chunkNumber: chunk.chunkNumber,
+          errorText: errorText
+        })
+      });
+      document.getElementById('errorBox').style.display = 'none';
+      document.getElementById('errorText').value = '';
+      document.getElementById('status').textContent = 'Error report submitted. Thank you.';
+    }
+
     if (chunkQueue.length <= 5) loadChunks(10);
   }
 
