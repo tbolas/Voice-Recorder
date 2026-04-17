@@ -91,9 +91,8 @@ var currentChunk = null;
   var uploadQueue = [];
   var isUploading = false;
   
-  var jsonpCounter = 0;
   function jsonp(params, callback) {
-    var cbName = 'cb_' + Date.now() + '_' + (jsonpCounter++);
+    var cbName = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
     var url = APPS_SCRIPT_URL + '?' + Object.keys(params).map(function(k) {
       return k + '=' + encodeURIComponent(params[k]);
     }).join('&') + '&callback=' + cbName;
@@ -106,6 +105,7 @@ var currentChunk = null;
     script.src = url;
     document.head.appendChild(script);
   }
+  
   function loadChunks(count) {
     jsonp({ action: 'next', count: count || 10 }, function(data) {
       if (data.error) {
