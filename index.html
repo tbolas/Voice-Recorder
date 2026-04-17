@@ -71,6 +71,8 @@ Please read the sentence below, first to make sure you understand it, then press
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
 <script>
+var localOutstanding = null;
+
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1DwlpJ3f12xTo_Rui80G_OYgmCN6V-MF09RpFos1EdQHwp9kWUbRB7_g/exec';
 
 
@@ -121,7 +123,7 @@ var currentChunk = null;
     });
   }
 
- function showNextChunk() {
+function showNextChunk() {
     if (chunkQueue.length === 0) {
       document.getElementById('loadingMsg').style.display = 'block';
       document.getElementById('loadingMsg').textContent = 'Loading next passage...';
@@ -130,15 +132,22 @@ var currentChunk = null;
       return;
     }
     currentChunk = chunkQueue.shift();
-    var wordCount = currentChunk.promptText.trim().split(/\s+/).length;
-    document.getElementById('sentenceValue').textContent = (wordCount * 5).toLocaleString() + ' BIF';
-    document.getElementById('totalOwed').textContent = '...';
-    var lumicash = document.getElementById('lumicashField').value.trim();
-    if (lumicash) {
-      jsonp({ action: 'getBalance', lumicash: lumicash }, function(data) {
-        document.getElementById('totalOwed').textContent = (data.outstanding || 0).toLocaleString() + ' BIF';
-      });
+    var wordCount = currentChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
+    var sentenceValue = wordCount * 5;
+    document.getElementById('sentenceValue').textContent = sentenceValue.toLocaleString() + ' BIF';
+
+    if (localOutstanding === null) {
+      var lumicash = document.getElementById('lumicashField').value.trim();
+      if (lumicash) {
+        jsonp({ action: 'getBalance', lumicash: lumicash }, function(data) {
+          localOutstanding = data.outstanding || 0;
+          document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
+        });
+      }
+    } else {
+      document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
     }
+
     document.getElementById('promptDisplay').textContent = currentChunk.promptText;
     document.getElementById('chunkInfo').textContent = 'Passage ' + currentChunk.chunkNumber;
     document.getElementById('loadingMsg').style.display = 'none';
@@ -153,7 +162,6 @@ var currentChunk = null;
     document.getElementById('errorBox').style.display = 'none';
     document.getElementById('errorText').value = '';
     mp3Chunks = [];
-
     if (chunkQueue.length <= 5) loadChunks(10);
   }
 
@@ -303,7 +311,10 @@ function submitForm() {
       processUploadQueue();
     };
     reader.readAsDataURL(blob);
-
+    if (localOutstanding !== null) {
+      var wc = submittedChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
+      localOutstanding += wc * 5;
+    }
     // immediately show next chunk
     showNextChunk();
   }
