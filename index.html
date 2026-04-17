@@ -134,31 +134,6 @@ function jsonp(params, callback) {
     document.getElementById('errorText').value = '';
     mp3Chunks = [];
 
-    function toggleErrorBox() {
-      var box = document.getElementById('errorBox');
-      box.style.display = box.style.display === 'none' ? 'block' : 'none';
-    }
-
-    function submitError() {
-      var errorText = document.getElementById('errorText').value.trim();
-      if (!errorText) { alert('Please describe the problem.'); return; }
-      var chunk = currentChunk;
-      fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-          action: 'reportError',
-          bookName: chunk.bookName,
-          chunkNumber: chunk.chunkNumber,
-          errorText: errorText
-        })
-      });
-      document.getElementById('errorBox').style.display = 'none';
-      document.getElementById('errorText').value = '';
-      document.getElementById('status').textContent = 'Error report submitted. Thank you.';
-    }
-
     if (chunkQueue.length <= 5) loadChunks(10);
   }
 
@@ -187,7 +162,30 @@ function jsonp(params, callback) {
   var mp3Chunks = [];
   var isRecording = false;
   var timerInterval, seconds = 0;
+  function toggleErrorBox() {
+      var box = document.getElementById('errorBox');
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
 
+    function submitError() {
+      var errorText = document.getElementById('errorText').value.trim();
+      if (!errorText) { alert('Please describe the problem.'); return; }
+      var chunk = currentChunk;
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'reportError',
+          bookName: chunk.bookName,
+          chunkNumber: chunk.chunkNumber,
+          errorText: errorText
+        })
+      });
+      document.getElementById('errorBox').style.display = 'none';
+      document.getElementById('errorText').value = '';
+      document.getElementById('status').textContent = 'Error report submitted. Thank you.';
+    }
   function toggleRecord() {
     if (!isRecording) { startRecording(); } else { stopRecording(); }
   }
