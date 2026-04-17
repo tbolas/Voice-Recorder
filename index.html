@@ -43,6 +43,16 @@ Please read the sentence below, first to make sure you understand it, then press
 
 <div id="loadingMsg">Loading next passage...</div>
 <div id="formArea" style="display:none">
+  <div id="earningsBox" style="display:flex;gap:12px;margin-bottom:12px;">
+  <div style="flex:1;background:#e8f5e9;border-radius:4px;padding:10px 14px;">
+    <div style="font-size:11px;color:#555;margin-bottom:2px;">This sentence</div>
+    <div id="sentenceValue" style="font-size:16px;font-weight:bold;color:#2e7d32;">— BIF</div>
+  </div>
+  <div style="flex:1;background:#e8f4fd;border-radius:4px;padding:10px 14px;">
+    <div style="font-size:11px;color:#555;margin-bottom:2px;">Total owed to you</div>
+    <div id="totalOwed" style="font-size:16px;font-weight:bold;color:#1565c0;">— BIF</div>
+  </div>
+</div>
   <label>Read this passage aloud:</label>
   <div id="chunkInfo"></div>
   <div class="prompt-box" id="promptDisplay"></div>
@@ -119,6 +129,15 @@ function jsonp(params, callback) {
       return;
     }
     currentChunk = chunkQueue.shift();
+    var wordCount = currentChunk.promptText.trim().split(/\s+/).length;
+    document.getElementById('sentenceValue').textContent = (wordCount * 5).toLocaleString() + ' BIF';
+    document.getElementById('totalOwed').textContent = '...';
+    var lumicash = document.getElementById('lumicashField').value.trim();
+    if (lumicash) {
+      jsonp({ action: 'getBalance', lumicash: lumicash }, function(data) {
+        document.getElementById('totalOwed').textContent = (data.outstanding || 0).toLocaleString() + ' BIF';
+      });
+    }
     document.getElementById('promptDisplay').textContent = currentChunk.promptText;
     document.getElementById('chunkInfo').textContent = 'Passage ' + currentChunk.chunkNumber;
     document.getElementById('loadingMsg').style.display = 'none';
