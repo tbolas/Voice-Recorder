@@ -91,8 +91,9 @@ var currentChunk = null;
   var uploadQueue = [];
   var isUploading = false;
   
-function jsonp(params, callback) {
-    var cbName = 'cb_' + Date.now();
+  var jsonpCounter = 0;
+  function jsonp(params, callback) {
+    var cbName = 'cb_' + Date.now() + '_' + (jsonpCounter++);
     var url = APPS_SCRIPT_URL + '?' + Object.keys(params).map(function(k) {
       return k + '=' + encodeURIComponent(params[k]);
     }).join('&') + '&callback=' + cbName;
