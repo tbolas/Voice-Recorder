@@ -40,7 +40,15 @@ Please read the sentence below, first to make sure you understand it, then press
 
 <label for="lumicashField">Lumicash number (8 digits)</label>
 <input type="text" id="lumicashField" placeholder="12345678" maxlength="8" pattern="[0-9]{8}" />
-
+<label>Sexe</label>
+<div style="margin-bottom:20px;">
+  <label style="font-weight:normal;display:inline-block;margin-right:20px;">
+    <input type="radio" name="sexe" value="Homme" id="sexeHomme" onchange="localStorage.setItem('sexe','Homme')"> Homme
+  </label>
+  <label style="font-weight:normal;display:inline-block;">
+    <input type="radio" name="sexe" value="Femme" id="sexeFemme" onchange="localStorage.setItem('sexe','Femme')"> Femme
+  </label>
+</div>
 <div id="loadingMsg">Loading next passage...</div>
 <div id="formArea" style="display:none">
   <div id="earningsBox" style="display:flex;gap:12px;margin-bottom:12px;">
@@ -78,6 +86,10 @@ var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1Dwl
 
   var savedName = localStorage.getItem('recorderName') || '';
   var savedLumicash = localStorage.getItem('recorderLumicash') || '';
+  var savedSexe = localStorage.getItem('sexe') || '';
+  if (savedSexe === 'Homme') document.getElementById('sexeHomme').checked = true;
+  if (savedSexe === 'Femme') document.getElementById('sexeFemme').checked = true;
+
   document.getElementById('nameField').value = savedName;
   document.getElementById('lumicashField').value = savedLumicash;
 
@@ -292,6 +304,9 @@ function showNextChunk() {
 function submitForm() {
     var name = document.getElementById('nameField').value.trim();
     var lumicash = document.getElementById('lumicashField').value.trim();
+    var sexe = document.querySelector('input[name="sexe"]:checked');
+    if (!sexe) { alert('Please select Homme or Femme.'); return; }
+
     if (!name) { alert('Please enter your name.'); return; }
     if (!/^[0-9]{8}$/.test(lumicash)) { alert('Please enter a valid 8-digit Lumicash number.'); return; }
     if (!mp3Chunks.length) { alert('Please record audio first.'); return; }
@@ -306,6 +321,7 @@ function submitForm() {
         chunkNumber: submittedChunk.chunkNumber,
         personName: name,
         lumicash: lumicash,
+        sexe: sexe.value,
         promptText: submittedChunk.promptText,
         dataURI: reader.result
       });
