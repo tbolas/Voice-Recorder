@@ -230,9 +230,10 @@ function showNextChunk() {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         audioContext.resume();
         var sampleRate = audioContext.sampleRate;
-        mp3Encoder = new lamejs.Mp3Encoder(1, sampleRate, 128);
+        var targetRate = 44100;
+        mp3Encoder = new lamejs.Mp3Encoder(1, targetRate, 128);
         var source = audioContext.createMediaStreamSource(stream);
-        scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+        scriptProcessor = audioContext.createScriptProcessor(16384, 1, 1);
         scriptProcessor.onaudioprocess = function(e) {
           if (!isRecording) return;
           var samples = e.inputBuffer.getChannelData(0);
