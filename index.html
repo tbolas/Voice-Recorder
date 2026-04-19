@@ -32,7 +32,9 @@
 
 <div class="instructions">
   <!-- EDIT INSTRUCTIONS HERE -->
-Please read the sentence below, first to make sure you understand it, then press record and read it clearly a second time. Speak at your normal speed. If you make a mistake in speaking you can press stop recording and re-record. When you are done, click submit recording. You will be paid per word spoken from the text. Please include your lumicash number, and payment will be made each week. 
+Please read the sentence below in your normal voice. If you make a mistake in speaking you can press stop recording and resume recording
+  When you are done, click submit recording. You will be paid per word spoken from the text. The value of each sentence will be shown as well as total money earned.
+  Your work here will be used to train artificial intelligence to understand kirundi better and help Burundians use it better for research, medicine, education, and other areas. Thank you very much 
 </div>
 
 <label for="nameField">Your name</label>
@@ -40,6 +42,28 @@ Please read the sentence below, first to make sure you understand it, then press
 
 <label for="lumicashField">Lumicash number (8 digits)</label>
 <input type="text" id="lumicashField" placeholder="12345678" maxlength="8" pattern="[0-9]{8}" />
+<label for="provinceField">Province d'origine</label>
+<select id="provinceField" onchange="localStorage.setItem('province', this.value)" style="width:100%;padding:10px;font-size:16px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;margin-bottom:20px;">
+  <option value="">— Sélectionner —</option>
+  <option value="Bubanza">Bubanza</option>
+  <option value="Bujumbura Mairie">Bujumbura Mairie</option>
+  <option value="Bujumbura Rural">Bujumbura Rural</option>
+  <option value="Bururi">Bururi</option>
+  <option value="Cankuzo">Cankuzo</option>
+  <option value="Cibitoke">Cibitoke</option>
+  <option value="Gitega">Gitega</option>
+  <option value="Karuzi">Karuzi</option>
+  <option value="Kayanza">Kayanza</option>
+  <option value="Kirundo">Kirundo</option>
+  <option value="Makamba">Makamba</option>
+  <option value="Muramvya">Muramvya</option>
+  <option value="Muyinga">Muyinga</option>
+  <option value="Mwaro">Mwaro</option>
+  <option value="Ngozi">Ngozi</option>
+  <option value="Rumonge">Rumonge</option>
+  <option value="Rutana">Rutana</option>
+  <option value="Ruyigi">Ruyigi</option>
+</select>
 <label>Sexe</label>
 <div style="margin-bottom:20px;">
   <label style="font-weight:normal;display:inline-block;margin-right:20px;">
@@ -86,6 +110,9 @@ var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1Dwl
 
   var savedName = localStorage.getItem('recorderName') || '';
   var savedLumicash = localStorage.getItem('recorderLumicash') || '';
+  var savedProvince = localStorage.getItem('province') || '';
+  document.getElementById('provinceField').value = savedProvince;
+
   var savedSexe = localStorage.getItem('sexe') || '';
   if (savedSexe === 'Homme') document.getElementById('sexeHomme').checked = true;
   if (savedSexe === 'Femme') document.getElementById('sexeFemme').checked = true;
@@ -321,6 +348,7 @@ function submitForm() {
         chunkNumber: submittedChunk.chunkNumber,
         personName: name,
         lumicash: lumicash,
+        province: province,
         sexe: sexe.value,
         promptText: submittedChunk.promptText,
         dataURI: reader.result
