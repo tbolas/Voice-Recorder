@@ -332,8 +332,10 @@ function submitForm() {
     var name = document.getElementById('nameField').value.trim();
     var lumicash = document.getElementById('lumicashField').value.trim();
     var sexe = document.querySelector('input[name="sexe"]:checked');
-    if (!sexe) { alert('Please select Homme or Femme.'); return; }
+    var province = document.getElementById('provinceField').value;
 
+    if (!sexe) { alert('Please select Homme or Femme.'); return; }
+    if (!province) { alert('Please select Province.'); return; }
     if (!name) { alert('Please enter your name.'); return; }
     if (!/^[0-9]{8}$/.test(lumicash)) { alert('Please enter a valid 8-digit Lumicash number.'); return; }
     if (!mp3Chunks.length) { alert('Please record audio first.'); return; }
