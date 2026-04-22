@@ -170,7 +170,7 @@ var currentChunk = null;
     }
     currentChunk = chunkQueue.shift();
     var wordCount = currentChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
-    var sentenceValue = wordCount * 5;
+    var sentenceValue = wordCount * 8;
     document.getElementById('sentenceValue').textContent = sentenceValue.toLocaleString() + ' BIF';
 
     if (localOutstanding === null) {
@@ -358,7 +358,7 @@ var currentChunk = null;
     reader.readAsDataURL(blob);
     if (localOutstanding !== null) {
       var wc = submittedChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
-      localOutstanding += wc * 5;
+      localOutstanding += wc * 8;
     }
     showNextChunk();
   }
