@@ -103,8 +103,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
 <script>
-var localOutstanding = null;
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1DwlpJ3f12xTo_Rui80G_OYgmCN6V-MF09RpFos1EdQHwp9kWUbRB7_g/exec';
+  var localOutstanding = null;
+  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1DwlpJ3f12xTo_Rui80G_OYgmCN6V-MF09RpFos1EdQHwp9kWUbRB7_g/exec';
 
   var savedName = localStorage.getItem('recorderName') || '';
   var savedLumicash = localStorage.getItem('recorderLumicash') || '';
@@ -125,7 +125,7 @@ var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1Dwl
     localStorage.setItem('recorderLumicash', this.value.trim());
   });
 
-var currentChunk = null;
+  var currentChunk = null;
   var chunkQueue = [];
   var uploadQueue = [];
   var isUploading = false;
@@ -148,7 +148,7 @@ var currentChunk = null;
   function loadChunks(count) {
     jsonp({ action: 'next', count: count || 10 }, function(data) {
       if (data.error) {
-        if (chunkQueue.length === 0) {
+        if (chunkQueue.length === 0 && !currentChunk) {
           document.getElementById('loadingMsg').textContent = data.error === 'No chunks available'
             ? 'Toutes les phrases ont été enregistrées. Merci !'
             : 'Erreur : ' + data.error;
@@ -168,38 +168,51 @@ var currentChunk = null;
       loadChunks(10);
       return;
     }
-    currentChunk = chunkQueue.shift();
-    var wordCount = currentChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
-    var sentenceValue = wordCount * 8;
-    document.getElementById('sentenceValue').textContent = sentenceValue.toLocaleString() + ' BIF';
 
-    if (localOutstanding === null) {
-      var lumicash = document.getElementById('lumicashField').value.trim();
-      if (lumicash) {
-        jsonp({ action: 'getBalance', lumicash: lumicash }, function(data) {
-          localOutstanding = data.outstanding || 0;
-          document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
-        });
+    var candidate = chunkQueue.shift();
+
+    // Claim the chunk on the server before showing it
+    jsonp({ action: 'claim', chunkNumber: candidate.chunkNumber, bookName: candidate.bookName }, function(result) {
+      if (result.error === 'already_done') {
+        // Someone else already recorded this one — skip to next
+        showNextChunk();
+        return;
       }
-    } else {
-      document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
-    }
+      // Claimed successfully — show it
+      currentChunk = candidate;
+      var wordCount = currentChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
+      var sentenceValue = wordCount * 8;
+      document.getElementById('sentenceValue').textContent = sentenceValue.toLocaleString() + ' BIF';
 
-    document.getElementById('promptDisplay').textContent = currentChunk.promptText;
-    document.getElementById('chunkInfo').textContent = 'Phrase ' + currentChunk.chunkNumber;
-    document.getElementById('loadingMsg').style.display = 'none';
-    document.getElementById('formArea').style.display = 'block';
-    document.getElementById('audioPlayback').style.display = 'none';
-    document.getElementById('submitBtn').style.display = 'none';
-    document.getElementById('submitBtn').disabled = false;
-    document.getElementById('recordBtn').textContent = 'Commencer l\'enregistrement';
-    document.getElementById('recordBtn').classList.remove('recording');
-    document.getElementById('status').textContent = '';
-    document.getElementById('errorBtn').style.display = 'inline-block';
-    document.getElementById('errorBox').style.display = 'none';
-    document.getElementById('errorText').value = '';
-    mp3Chunks = [];
-    if (chunkQueue.length <= 5) loadChunks(10);
+      if (localOutstanding === null) {
+        var lumicash = document.getElementById('lumicashField').value.trim();
+        if (lumicash) {
+          jsonp({ action: 'getBalance', lumicash: lumicash }, function(data) {
+            localOutstanding = data.outstanding || 0;
+            document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
+          });
+        }
+      } else {
+        document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
+      }
+
+      document.getElementById('promptDisplay').textContent = currentChunk.promptText;
+      document.getElementById('chunkInfo').textContent = 'Phrase ' + currentChunk.chunkNumber;
+      document.getElementById('loadingMsg').style.display = 'none';
+      document.getElementById('formArea').style.display = 'block';
+      document.getElementById('audioPlayback').style.display = 'none';
+      document.getElementById('submitBtn').style.display = 'none';
+      document.getElementById('submitBtn').disabled = false;
+      document.getElementById('recordBtn').textContent = 'Commencer l\'enregistrement';
+      document.getElementById('recordBtn').classList.remove('recording');
+      document.getElementById('status').textContent = '';
+      document.getElementById('errorBtn').style.display = 'inline-block';
+      document.getElementById('errorBox').style.display = 'none';
+      document.getElementById('errorText').value = '';
+      mp3Chunks = [];
+
+      if (chunkQueue.length <= 5) loadChunks(10);
+    });
   }
 
   function processUploadQueue() {
@@ -341,6 +354,8 @@ var currentChunk = null;
     var blob = new Blob(mp3Chunks, { type: 'audio/mp3' });
     var reader = new FileReader();
     var submittedChunk = currentChunk;
+    currentChunk = null;
+
     reader.onloadend = function() {
       uploadQueue.push({
         action: 'submit',
@@ -356,10 +371,12 @@ var currentChunk = null;
       processUploadQueue();
     };
     reader.readAsDataURL(blob);
+
     if (localOutstanding !== null) {
       var wc = submittedChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
       localOutstanding += wc * 8;
     }
+
     showNextChunk();
   }
 
