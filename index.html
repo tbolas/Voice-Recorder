@@ -168,51 +168,39 @@
       loadChunks(10);
       return;
     }
+    currentChunk = chunkQueue.shift();
+    var wordCount = currentChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
+    var sentenceValue = wordCount * 8;
+    document.getElementById('sentenceValue').textContent = sentenceValue.toLocaleString() + ' BIF';
 
-    var candidate = chunkQueue.shift();
-
-    // Claim the chunk on the server before showing it
-    jsonp({ action: 'claim', chunkNumber: candidate.chunkNumber, bookName: candidate.bookName }, function(result) {
-      if (result.error === 'already_done') {
-        // Someone else already recorded this one — skip to next
-        showNextChunk();
-        return;
+    if (localOutstanding === null) {
+      var lumicash = document.getElementById('lumicashField').value.trim();
+      if (lumicash) {
+        jsonp({ action: 'getBalance', lumicash: lumicash }, function(data) {
+          localOutstanding = data.outstanding || 0;
+          document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
+        });
       }
-      // Claimed successfully — show it
-      currentChunk = candidate;
-      var wordCount = currentChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
-      var sentenceValue = wordCount * 8;
-      document.getElementById('sentenceValue').textContent = sentenceValue.toLocaleString() + ' BIF';
+    } else {
+      document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
+    }
 
-      if (localOutstanding === null) {
-        var lumicash = document.getElementById('lumicashField').value.trim();
-        if (lumicash) {
-          jsonp({ action: 'getBalance', lumicash: lumicash }, function(data) {
-            localOutstanding = data.outstanding || 0;
-            document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
-          });
-        }
-      } else {
-        document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
-      }
+    document.getElementById('promptDisplay').textContent = currentChunk.promptText;
+    document.getElementById('chunkInfo').textContent = 'Phrase ' + currentChunk.chunkNumber;
+    document.getElementById('loadingMsg').style.display = 'none';
+    document.getElementById('formArea').style.display = 'block';
+    document.getElementById('audioPlayback').style.display = 'none';
+    document.getElementById('submitBtn').style.display = 'none';
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('recordBtn').textContent = 'Commencer l\'enregistrement';
+    document.getElementById('recordBtn').classList.remove('recording');
+    document.getElementById('status').textContent = '';
+    document.getElementById('errorBtn').style.display = 'inline-block';
+    document.getElementById('errorBox').style.display = 'none';
+    document.getElementById('errorText').value = '';
+    mp3Chunks = [];
 
-      document.getElementById('promptDisplay').textContent = currentChunk.promptText;
-      document.getElementById('chunkInfo').textContent = 'Phrase ' + currentChunk.chunkNumber;
-      document.getElementById('loadingMsg').style.display = 'none';
-      document.getElementById('formArea').style.display = 'block';
-      document.getElementById('audioPlayback').style.display = 'none';
-      document.getElementById('submitBtn').style.display = 'none';
-      document.getElementById('submitBtn').disabled = false;
-      document.getElementById('recordBtn').textContent = 'Commencer l\'enregistrement';
-      document.getElementById('recordBtn').classList.remove('recording');
-      document.getElementById('status').textContent = '';
-      document.getElementById('errorBtn').style.display = 'inline-block';
-      document.getElementById('errorBox').style.display = 'none';
-      document.getElementById('errorText').value = '';
-      mp3Chunks = [];
-
-      if (chunkQueue.length <= 5) loadChunks(10);
-    });
+    if (chunkQueue.length <= 5) loadChunks(10);
   }
 
   function processUploadQueue() {
