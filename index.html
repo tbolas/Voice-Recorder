@@ -219,10 +219,10 @@
       processUploadQueue();
     })
     .catch(function() {
+      uploadQueue.shift();
       isUploading = false;
-      setTimeout(processUploadQueue, 5000);
+      processUploadQueue();
     });
-  }
 
   var audioContext, mediaStream, scriptProcessor, mp3Encoder;
   var mp3Chunks = [];
