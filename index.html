@@ -103,7 +103,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
 <script>
-  var localOutstanding = null;
   var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1DwlpJ3f12xTo_Rui80G_OYgmCN6V-MF09RpFos1EdQHwp9kWUbRB7_g/exec';
 
   var savedName = localStorage.getItem('recorderName') || '';
@@ -173,18 +172,12 @@
     var sentenceValue = wordCount * 7;
     document.getElementById('sentenceValue').textContent = sentenceValue.toLocaleString() + ' BIF';
 
-    if (localOutstanding === null) {
-      var lumicash = document.getElementById('lumicashField').value.trim();
+   var lumicash = document.getElementById('lumicashField').value.trim();
       if (lumicash) {
         jsonp({ action: 'getBalance', lumicash: lumicash }, function(data) {
-          localOutstanding = data.outstanding || 0;
-          document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
+          document.getElementById('totalOwed').textContent = (data.outstanding || 0).toLocaleString() + ' BIF';
         });
       }
-    } else {
-      document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
-    }
-
     document.getElementById('promptDisplay').textContent = currentChunk.promptText;
     document.getElementById('chunkInfo').textContent = 'Phrase ' + currentChunk.chunkNumber;
     document.getElementById('loadingMsg').style.display = 'none';
@@ -359,10 +352,7 @@
     };
     reader.readAsDataURL(blob);
 
-    if (localOutstanding !== null) {
-      var wc = submittedChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
-      localOutstanding += wc * 7;
-    }
+
 
     showNextChunk();
   }
