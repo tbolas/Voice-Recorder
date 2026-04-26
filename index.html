@@ -31,7 +31,353 @@
 <h2>Projet d'Enregistrement Vocal</h2>
 
 <div class="instructions">
-Merci encore pour votre participation. Ce formulaire est temporairement fermé le temps d'effectuer quelques corrections. Il sera de nouveau disponible une fois tous les problèmes résolus. Le traitement des paiements se poursuit aujourd'hui et reste notre priorité absolue.</div>
+  THIS IS IN TEST MODE. Veuillez lire la phrase ci-dessous avec votre voix normale. Si vous faites une erreur, vous pouvez appuyer sur arrêter l'enregistrement et recommencer. Lorsque vous avez terminé, cliquez sur soumettre l'enregistrement. Vous serez payé par mot lu. La valeur de chaque phrase sera affichée ainsi que le total gagné. Votre travail servira à entraîner l'intelligence artificielle à mieux comprendre le kirundi et à aider les Burundais dans la recherche, la médecine, l'éducation et d'autres domaines. Merci beaucoup.
+</div>
 
+<label for="nameField">Votre nom</label>
+<input type="text" id="nameField" placeholder="Nom complet" />
+
+<label for="lumicashField">Numéro Lumicash (8 chiffres)</label>
+<input type="text" id="lumicashField" placeholder="12345678" maxlength="8" pattern="[0-9]{8}" />
+
+<label for="provinceField">Province d'origine</label>
+<select id="provinceField" onchange="localStorage.setItem('province', this.value)" style="width:100%;padding:10px;font-size:16px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;margin-bottom:20px;">
+  <option value="">— Sélectionner —</option>
+  <option value="Bubanza">Bubanza</option>
+  <option value="Bujumbura Mairie">Bujumbura Mairie</option>
+  <option value="Bujumbura Rural">Bujumbura Rural</option>
+  <option value="Bururi">Bururi</option>
+  <option value="Cankuzo">Cankuzo</option>
+  <option value="Cibitoke">Cibitoke</option>
+  <option value="Gitega">Gitega</option>
+  <option value="Karuzi">Karuzi</option>
+  <option value="Kayanza">Kayanza</option>
+  <option value="Kirundo">Kirundo</option>
+  <option value="Makamba">Makamba</option>
+  <option value="Muramvya">Muramvya</option>
+  <option value="Muyinga">Muyinga</option>
+  <option value="Mwaro">Mwaro</option>
+  <option value="Ngozi">Ngozi</option>
+  <option value="Rumonge">Rumonge</option>
+  <option value="Rutana">Rutana</option>
+  <option value="Ruyigi">Ruyigi</option>
+</select>
+
+<label>Sexe</label>
+<div style="margin-bottom:20px;">
+  <label style="font-weight:normal;display:inline-block;margin-right:20px;">
+    <input type="radio" name="sexe" value="Homme" id="sexeHomme" onchange="localStorage.setItem('sexe','Homme')"> Homme
+  </label>
+  <label style="font-weight:normal;display:inline-block;">
+    <input type="radio" name="sexe" value="Femme" id="sexeFemme" onchange="localStorage.setItem('sexe','Femme')"> Femme
+  </label>
+</div>
+
+<div id="loadingMsg">Chargement de la prochaine phrase...</div>
+<div id="formArea" style="display:none">
+  <div id="earningsBox" style="display:flex;gap:12px;margin-bottom:12px;">
+    <div style="flex:1;background:#e8f5e9;border-radius:4px;padding:10px 14px;">
+      <div style="font-size:11px;color:#555;margin-bottom:2px;">Cette phrase</div>
+      <div id="sentenceValue" style="font-size:16px;font-weight:bold;color:#2e7d32;">— BIF</div>
+    </div>
+    <div style="flex:1;background:#e8f4fd;border-radius:4px;padding:10px 14px;">
+      <div style="font-size:11px;color:#555;margin-bottom:2px;">Total dû</div>
+      <div id="totalOwed" style="font-size:16px;font-weight:bold;color:#1565c0;">— BIF</div>
+    </div>
+  </div>
+  <label>Lisez cette phrase à voix haute :</label>
+  <div id="chunkInfo"></div>
+  <div class="prompt-box" id="promptDisplay"></div>
+  <button class="btn" id="recordBtn" onclick="toggleRecord()">Commencer l'enregistrement</button>
+  <div class="timer" id="timerDisplay"></div>
+  <audio id="audioPlayback" controls style="display:none"></audio>
+  <br>
+  <button class="btn" id="submitBtn" onclick="submitForm()">Soumettre l'enregistrement</button>
+  <button class="btn" id="errorBtn" onclick="toggleErrorBox()" style="background:#888;color:white;display:none;margin-top:8px;">Signaler une erreur dans ce texte</button>
+  <div id="errorBox" style="display:none;margin-top:10px;">
+    <textarea id="errorText" placeholder="Décrivez le problème avec ce texte..." style="width:100%;padding:10px;font-size:14px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;height:80px;"></textarea>
+    <button class="btn" onclick="submitError()" style="background:#e53935;color:white;margin-top:8px;">Envoyer le rapport d'erreur</button>
+  </div>
+</div>
+<div id="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+<script>
+  var localOutstanding = null;
+  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1DwlpJ3f12xTo_Rui80G_OYgmCN6V-MF09RpFos1EdQHwp9kWUbRB7_g/exec';
+
+  var savedName = localStorage.getItem('recorderName') || '';
+  var savedLumicash = localStorage.getItem('recorderLumicash') || '';
+  var savedProvince = localStorage.getItem('province') || '';
+  document.getElementById('provinceField').value = savedProvince;
+
+  var savedSexe = localStorage.getItem('sexe') || '';
+  if (savedSexe === 'Homme') document.getElementById('sexeHomme').checked = true;
+  if (savedSexe === 'Femme') document.getElementById('sexeFemme').checked = true;
+
+  document.getElementById('nameField').value = savedName;
+  document.getElementById('lumicashField').value = savedLumicash;
+
+  document.getElementById('nameField').addEventListener('change', function() {
+    localStorage.setItem('recorderName', this.value.trim());
+  });
+  document.getElementById('lumicashField').addEventListener('change', function() {
+    localStorage.setItem('recorderLumicash', this.value.trim());
+  });
+
+  var currentChunk = null;
+  var chunkQueue = [];
+  var uploadQueue = [];
+  var isUploading = false;
+
+  function jsonp(params, callback) {
+    var cbName = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    var url = APPS_SCRIPT_URL + '?' + Object.keys(params).map(function(k) {
+      return k + '=' + encodeURIComponent(params[k]);
+    }).join('&') + '&callback=' + cbName;
+    window[cbName] = function(data) {
+      delete window[cbName];
+      document.head.removeChild(script);
+      callback(data);
+    };
+    var script = document.createElement('script');
+    script.src = url;
+    document.head.appendChild(script);
+  }
+
+  function loadChunks(count) {
+    jsonp({ action: 'next', count: count || 10 }, function(data) {
+      if (data.error) {
+        if (chunkQueue.length === 0 && !currentChunk) {
+          document.getElementById('loadingMsg').textContent = data.error === 'No chunks available'
+            ? 'Toutes les phrases ont été enregistrées. Merci !'
+            : 'Erreur : ' + data.error;
+        }
+        return;
+      }
+      chunkQueue = chunkQueue.concat(data.chunks);
+      if (!currentChunk) showNextChunk();
+    });
+  }
+
+  function showNextChunk() {
+    if (chunkQueue.length === 0) {
+      document.getElementById('loadingMsg').style.display = 'block';
+      document.getElementById('loadingMsg').textContent = 'Chargement de la prochaine phrase...';
+      document.getElementById('formArea').style.display = 'none';
+      loadChunks(10);
+      return;
+    }
+    currentChunk = chunkQueue.shift();
+    var wordCount = currentChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
+    var sentenceValue = wordCount * 7;
+    document.getElementById('sentenceValue').textContent = sentenceValue.toLocaleString() + ' BIF';
+
+    if (localOutstanding === null) {
+      var lumicash = document.getElementById('lumicashField').value.trim();
+      if (lumicash) {
+        jsonp({ action: 'getBalance', lumicash: lumicash }, function(data) {
+          localOutstanding = data.outstanding || 0;
+          document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
+        });
+      }
+    } else {
+      document.getElementById('totalOwed').textContent = localOutstanding.toLocaleString() + ' BIF';
+    }
+
+    document.getElementById('promptDisplay').textContent = currentChunk.promptText;
+    document.getElementById('chunkInfo').textContent = 'Phrase ' + currentChunk.chunkNumber;
+    document.getElementById('loadingMsg').style.display = 'none';
+    document.getElementById('formArea').style.display = 'block';
+    document.getElementById('audioPlayback').style.display = 'none';
+    document.getElementById('submitBtn').style.display = 'none';
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('recordBtn').textContent = 'Commencer l\'enregistrement';
+    document.getElementById('recordBtn').classList.remove('recording');
+    document.getElementById('status').textContent = '';
+    document.getElementById('errorBtn').style.display = 'inline-block';
+    document.getElementById('errorBox').style.display = 'none';
+    document.getElementById('errorText').value = '';
+    mp3Chunks = [];
+
+    if (chunkQueue.length <= 5) loadChunks(10);
+  }
+
+  function processUploadQueue() {
+    if (isUploading || uploadQueue.length === 0) return;
+    isUploading = true;
+    var item = uploadQueue[0];
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(item)
+    })
+    .then(function() {
+      uploadQueue.shift();
+      isUploading = false;
+      processUploadQueue();
+    })
+    .catch(function() {
+      isUploading = false;
+      setTimeout(processUploadQueue, 5000);
+    });
+  }
+
+  var audioContext, mediaStream, scriptProcessor, mp3Encoder;
+  var mp3Chunks = [];
+  var isRecording = false;
+  var timerInterval, seconds = 0;
+
+  function toggleErrorBox() {
+    var box = document.getElementById('errorBox');
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function submitError() {
+    var errorText = document.getElementById('errorText').value.trim();
+    if (!errorText) { alert('Veuillez décrire le problème.'); return; }
+    var chunk = currentChunk;
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'reportError',
+        bookName: chunk.bookName,
+        chunkNumber: chunk.chunkNumber,
+        errorText: errorText
+      })
+    });
+    document.getElementById('errorBox').style.display = 'none';
+    document.getElementById('errorText').value = '';
+    document.getElementById('status').textContent = 'Rapport d\'erreur envoyé. Merci.';
+  }
+
+  function toggleRecord() {
+    if (!isRecording) { startRecording(); } else { stopRecording(); }
+  }
+
+  function startRecording() {
+    mp3Chunks = [];
+    document.getElementById('audioPlayback').style.display = 'none';
+    document.getElementById('submitBtn').style.display = 'none';
+    document.getElementById('status').textContent = '';
+
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      .then(function(stream) {
+        mediaStream = stream;
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audioContext.resume();
+        var targetRate = 44100;
+        mp3Encoder = new lamejs.Mp3Encoder(1, targetRate, 128);
+        var source = audioContext.createMediaStreamSource(stream);
+        scriptProcessor = audioContext.createScriptProcessor(16384, 1, 1);
+        scriptProcessor.onaudioprocess = function(e) {
+          if (!isRecording) return;
+          var samples = e.inputBuffer.getChannelData(0);
+          var int16 = new Int16Array(samples.length);
+          for (var i = 0; i < samples.length; i++) {
+            int16[i] = Math.max(-32768, Math.min(32767, samples[i] * 32768));
+          }
+          var encoded = mp3Encoder.encodeBuffer(int16);
+          if (encoded.length > 0) mp3Chunks.push(encoded);
+        };
+        source.connect(scriptProcessor);
+        scriptProcessor.connect(audioContext.destination);
+        isRecording = true;
+        document.getElementById('recordBtn').textContent = 'Arrêter l\'enregistrement';
+        document.getElementById('recordBtn').classList.add('recording');
+        startTimer();
+      })
+      .catch(function(err) {
+        var msg = 'Erreur microphone : ' + err.name;
+        if (err.name === 'NotAllowedError') msg = 'Permission microphone refusée. Veuillez autoriser l\'accès et réessayer.';
+        if (err.name === 'NotFoundError') msg = 'Aucun microphone trouvé sur cet appareil.';
+        document.getElementById('status').textContent = msg;
+      });
+  }
+
+  function stopRecording() {
+    isRecording = false;
+    clearInterval(timerInterval);
+    document.getElementById('timerDisplay').textContent = '';
+    document.getElementById('recordBtn').textContent = 'Ré-enregistrer';
+    document.getElementById('recordBtn').classList.remove('recording');
+    if (scriptProcessor) scriptProcessor.disconnect();
+    if (mediaStream) mediaStream.getTracks().forEach(function(t) { t.stop(); });
+    if (audioContext) audioContext.close();
+    var final = mp3Encoder.flush();
+    if (final.length > 0) mp3Chunks.push(final);
+    var blob = new Blob(mp3Chunks, { type: 'audio/mp3' });
+    var url = URL.createObjectURL(blob);
+    document.getElementById('audioPlayback').src = url;
+    document.getElementById('audioPlayback').style.display = 'block';
+    document.getElementById('submitBtn').style.display = 'inline-block';
+    document.getElementById('submitBtn').disabled = false;
+  }
+
+  function startTimer() {
+    seconds = 0;
+    timerInterval = setInterval(function() {
+      seconds++;
+      var m = Math.floor(seconds / 60), s = seconds % 60;
+      document.getElementById('timerDisplay').textContent =
+        'Enregistrement : ' + m + ':' + (s < 10 ? '0' : '') + s;
+    }, 1000);
+  }
+
+  function submitForm() {
+    var name = document.getElementById('nameField').value.trim();
+    var lumicash = document.getElementById('lumicashField').value.trim();
+    var sexe = document.querySelector('input[name="sexe"]:checked');
+    var province = document.getElementById('provinceField').value;
+
+    if (!sexe) { alert('Veuillez sélectionner Homme ou Femme.'); return; }
+    if (!province) { alert('Veuillez sélectionner votre province.'); return; }
+    if (!name) { alert('Veuillez entrer votre nom.'); return; }
+    if (!/^[0-9]{8}$/.test(lumicash)) { alert('Veuillez entrer un numéro Lumicash valide à 8 chiffres.'); return; }
+    if (!mp3Chunks.length) { alert('Veuillez d\'abord enregistrer l\'audio.'); return; }
+
+    var blob = new Blob(mp3Chunks, { type: 'audio/mp3' });
+    var reader = new FileReader();
+    var submittedChunk = currentChunk;
+    currentChunk = null;
+
+    reader.onloadend = function() {
+      uploadQueue.push({
+        action: 'submit',
+        bookName: submittedChunk.bookName,
+        chunkNumber: submittedChunk.chunkNumber,
+        personName: name,
+        lumicash: lumicash,
+        province: province,
+        sexe: sexe.value,
+        promptText: submittedChunk.promptText,
+        dataURI: reader.result
+      });
+      processUploadQueue();
+    };
+    reader.readAsDataURL(blob);
+
+    if (localOutstanding !== null) {
+      var wc = submittedChunk.promptText.replace(/\s+/g, ' ').trim().split(' ').length;
+      localOutstanding += wc * 7;
+    }
+
+    showNextChunk();
+  }
+
+  window.addEventListener('beforeunload', function(e) {
+    if (uploadQueue.length > 0) {
+      var msg = 'Vos enregistrements sont en cours d\'envoi. Veuillez garder cet onglet ouvert.';
+      e.preventDefault();
+      e.returnValue = msg;
+      return msg;
+    }
+  });
+
+  loadChunks(10);
+</script>
 </body>
 </html>
