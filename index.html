@@ -149,7 +149,12 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
     document.getElementById('loadingMsg').textContent = 'Chargement de la prochaine phrase...';
     document.getElementById('formArea').style.display = 'none';
 
-    jsonp({ action: 'next' }, function(data) {
+    jsonp({ action: 'next', lumicash: lumicash }, function(data) {
+      if (data.error === 'NOT_WHITELISTED') {
+      document.getElementById('loadingMsg').textContent = 
+      'Cette application est maintenant fermée, merci de votre intérêt.';
+      return;
+    }
       if (data.error) {
         document.getElementById('loadingMsg').textContent =
           data.error === 'No chunks available'
