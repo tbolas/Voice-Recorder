@@ -23,7 +23,7 @@
   #status { margin-top: 16px; font-size: 14px; color: #555; }
   #chunkInfo { font-size: 13px; color: #888; margin-bottom: 8px; }
   audio { display: block; margin: 16px 0; width: 100%; }
-  #loadingMsg { font-size: 15px; color: #555; margin-top: 20px; display: none; }
+  #loadingMsg { font-size: 15px; color: #555; margin-top: 20px; }
 </style>
 </head>
 <body>
@@ -77,7 +77,7 @@ Ne vous inquietez pas, vos gains initiaux ont ete sauvegardes et vous seront env
 </div>
 
 <button class="btn" id="startBtn" onclick="handleStart()" style="background:#1e88e5;color:white;margin-bottom:20px;">Commencer</button>
-<div id="loadingMsg">Chargement de la prochaine phrase...</div>
+<div id="loadingMsg" style="display:none;">Chargement de la prochaine phrase...</div>
 
 <div id="formArea" style="display:none">
   <div id="earningsBox" style="display:flex;gap:12px;margin-bottom:12px;">
@@ -133,31 +133,12 @@ Ne vous inquietez pas, vos gains initiaux ont ete sauvegardes et vous seront env
     var url = APPS_SCRIPT_URL + '?' + Object.keys(params).map(function(k) {
       return k + '=' + encodeURIComponent(params[k]);
     }).join('&') + '&callback=' + cbName;
-    var done = false;
-    var script = document.createElement('script');
-    var timeout = setTimeout(function() {
-      if (done) return;
-      done = true;
-      delete window[cbName];
-      if (script.parentNode) document.head.removeChild(script);
-      callback({ error: 'Delai depasse - verifiez votre connexion et reessayez.' });
-    }, 20000);
     window[cbName] = function(data) {
-      if (done) return;
-      done = true;
-      clearTimeout(timeout);
       delete window[cbName];
       if (script.parentNode) document.head.removeChild(script);
       callback(data);
     };
-    script.onerror = function() {
-      if (done) return;
-      done = true;
-      clearTimeout(timeout);
-      delete window[cbName];
-      if (script.parentNode) document.head.removeChild(script);
-      callback({ error: 'Erreur reseau - verifiez votre connexion.' });
-    };
+    var script = document.createElement('script');
     script.src = url;
     document.head.appendChild(script);
   }
