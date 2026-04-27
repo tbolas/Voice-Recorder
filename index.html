@@ -148,7 +148,7 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
     document.getElementById('loadingMsg').style.display = 'block';
     document.getElementById('loadingMsg').textContent = 'Chargement de la prochaine phrase...';
     document.getElementById('formArea').style.display = 'none';
-
+    var lumicash = document.getElementById('lumicashField').value.trim();
     jsonp({ action: 'next', lumicash: lumicash }, function(data) {
       if (data.error === 'NOT_WHITELISTED') {
       document.getElementById('loadingMsg').textContent = 
