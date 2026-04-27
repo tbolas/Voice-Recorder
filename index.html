@@ -23,7 +23,7 @@
   #status { margin-top: 16px; font-size: 14px; color: #555; }
   #chunkInfo { font-size: 13px; color: #888; margin-bottom: 8px; }
   audio { display: block; margin: 16px 0; width: 100%; }
-  #loadingMsg { font-size: 15px; color: #555; margin-top: 20px; }
+  #loadingMsg { font-size: 15px; color: #555; margin-top: 20px; display: none; }
 </style>
 </head>
 <body>
@@ -33,19 +33,19 @@
 <div class="instructions">
 Ceci est un test du code qui devrait mieux fonctionner.
 
-Vous remarquerez que votre solde est à zéro.
+Vous remarquerez que votre solde est a zero.
 
-Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront envoyés via LumiCash ce soir ou demain. Tous les gains réalisés ici seront payés vendredi prochain.</div>
+Ne vous inquietez pas, vos gains initiaux ont ete sauvegardes et vous seront envoyes via LumiCash ce soir ou demain. Tous les gains realises ici seront payes vendredi prochain.</div>
 
 <label for="nameField">Votre nom</label>
 <input type="text" id="nameField" placeholder="Nom complet" />
 
-<label for="lumicashField">Numéro Lumicash (8 chiffres)</label>
+<label for="lumicashField">Numero Lumicash (8 chiffres)</label>
 <input type="text" id="lumicashField" placeholder="12345678" maxlength="8" pattern="[0-9]{8}" />
 
 <label for="provinceField">Province d'origine</label>
 <select id="provinceField" onchange="localStorage.setItem('province', this.value)" style="width:100%;padding:10px;font-size:16px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;margin-bottom:20px;">
-  <option value="">— Sélectionner —</option>
+  <option value="">— Selectionner —</option>
   <option value="Bubanza">Bubanza</option>
   <option value="Bujumbura Mairie">Bujumbura Mairie</option>
   <option value="Bujumbura Rural">Bujumbura Rural</option>
@@ -76,7 +76,9 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
   </label>
 </div>
 
+<button class="btn" id="startBtn" onclick="handleStart()" style="background:#1e88e5;color:white;margin-bottom:20px;">Commencer</button>
 <div id="loadingMsg">Chargement de la prochaine phrase...</div>
+
 <div id="formArea" style="display:none">
   <div id="earningsBox" style="display:flex;gap:12px;margin-bottom:12px;">
     <div style="flex:1;background:#e8f5e9;border-radius:4px;padding:10px 14px;">
@@ -84,11 +86,11 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
       <div id="sentenceValue" style="font-size:16px;font-weight:bold;color:#2e7d32;">— BIF</div>
     </div>
     <div style="flex:1;background:#e8f4fd;border-radius:4px;padding:10px 14px;">
-      <div style="font-size:11px;color:#555;margin-bottom:2px;">Total dû</div>
+      <div style="font-size:11px;color:#555;margin-bottom:2px;">Total du</div>
       <div id="totalOwed" style="font-size:16px;font-weight:bold;color:#1565c0;">— BIF</div>
     </div>
   </div>
-  <label>Lisez cette phrase à voix haute :</label>
+  <label>Lisez cette phrase a voix haute :</label>
   <div id="chunkInfo"></div>
   <div class="prompt-box" id="promptDisplay"></div>
   <button class="btn" id="recordBtn" onclick="toggleRecord()">Commencer l'enregistrement</button>
@@ -98,7 +100,7 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
   <button class="btn" id="submitBtn" onclick="submitForm()">Soumettre l'enregistrement</button>
   <button class="btn" id="errorBtn" onclick="toggleErrorBox()" style="background:#888;color:white;display:none;margin-top:8px;">Signaler une erreur dans ce texte</button>
   <div id="errorBox" style="display:none;margin-top:10px;">
-    <textarea id="errorText" placeholder="Décrivez le problème avec ce texte..." style="width:100%;padding:10px;font-size:14px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;height:80px;"></textarea>
+    <textarea id="errorText" placeholder="Decrivez le probleme avec ce texte..." style="width:100%;padding:10px;font-size:14px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;height:80px;"></textarea>
     <button class="btn" onclick="submitError()" style="background:#e53935;color:white;margin-top:8px;">Envoyer le rapport d'erreur</button>
   </div>
 </div>
@@ -108,7 +110,6 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
 <script>
   var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsSHszOlOsiR1DwlpJ3f12xTo_Rui80G_OYgmCN6V-MF09RpFos1EdQHwp9kWUbRB7_g/exec';
 
-  // ── Restore saved fields ──────────────────────────────────────
   document.getElementById('nameField').value = localStorage.getItem('recorderName') || '';
   document.getElementById('lumicashField').value = localStorage.getItem('recorderLumicash') || '';
   document.getElementById('provinceField').value = localStorage.getItem('province') || '';
@@ -127,23 +128,53 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
   var uploadQueue = [];
   var isUploading = false;
 
-  // ── JSONP helper ──────────────────────────────────────────────
   function jsonp(params, callback) {
     var cbName = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
     var url = APPS_SCRIPT_URL + '?' + Object.keys(params).map(function(k) {
       return k + '=' + encodeURIComponent(params[k]);
     }).join('&') + '&callback=' + cbName;
-    window[cbName] = function(data) {
+    var done = false;
+    var script = document.createElement('script');
+    var timeout = setTimeout(function() {
+      if (done) return;
+      done = true;
       delete window[cbName];
-      document.head.removeChild(script);
+      if (script.parentNode) document.head.removeChild(script);
+      callback({ error: 'Delai depasse - verifiez votre connexion et reessayez.' });
+    }, 20000);
+    window[cbName] = function(data) {
+      if (done) return;
+      done = true;
+      clearTimeout(timeout);
+      delete window[cbName];
+      if (script.parentNode) document.head.removeChild(script);
       callback(data);
     };
-    var script = document.createElement('script');
+    script.onerror = function() {
+      if (done) return;
+      done = true;
+      clearTimeout(timeout);
+      delete window[cbName];
+      if (script.parentNode) document.head.removeChild(script);
+      callback({ error: 'Erreur reseau - verifiez votre connexion.' });
+    };
     script.src = url;
     document.head.appendChild(script);
   }
 
-  // ── Load one chunk from the server ───────────────────────────
+  function handleStart() {
+    var lumicash = document.getElementById('lumicashField').value.trim();
+    var name = document.getElementById('nameField').value.trim();
+    var sexe = document.querySelector('input[name="sexe"]:checked');
+    var province = document.getElementById('provinceField').value;
+    if (!name) { alert('Veuillez entrer votre nom.'); return; }
+    if (!/^[0-9]{8}$/.test(lumicash)) { alert('Veuillez entrer un numero Lumicash valide a 8 chiffres.'); return; }
+    if (!sexe) { alert('Veuillez selectionner Homme ou Femme.'); return; }
+    if (!province) { alert('Veuillez selectionner votre province.'); return; }
+    document.getElementById('startBtn').style.display = 'none';
+    loadNextChunk();
+  }
+
   function loadNextChunk() {
     document.getElementById('loadingMsg').style.display = 'block';
     document.getElementById('loadingMsg').textContent = 'Chargement de la prochaine phrase...';
@@ -151,14 +182,14 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
     var lumicash = document.getElementById('lumicashField').value.trim();
     jsonp({ action: 'next', lumicash: lumicash }, function(data) {
       if (data.error === 'NOT_WHITELISTED') {
-      document.getElementById('loadingMsg').textContent = 
-      'Cette application est maintenant fermée, merci de votre intérêt.';
-      return;
-    }
+        document.getElementById('loadingMsg').textContent =
+          'Cette application est maintenant fermee, merci de votre interet.';
+        return;
+      }
       if (data.error) {
         document.getElementById('loadingMsg').textContent =
           data.error === 'No chunks available'
-            ? 'Toutes les phrases ont été enregistrées. Merci !'
+            ? 'Toutes les phrases ont ete enregistrees. Merci !'
             : 'Erreur : ' + data.error;
         return;
       }
@@ -166,29 +197,21 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
     });
   }
 
-  // ── Fetch server-side balance and update display ──────────────
   function refreshBalance() {
     var lumicash = document.getElementById('lumicashField').value.trim();
-    if (!lumicash) {
-      document.getElementById('totalOwed').textContent = '— BIF';
-      return;
-    }
+    if (!lumicash) { document.getElementById('totalOwed').textContent = '— BIF'; return; }
     jsonp({ action: 'getBalance', lumicash: lumicash }, function(data) {
       var outstanding = data.outstanding || 0;
       document.getElementById('totalOwed').textContent = outstanding.toLocaleString() + ' BIF';
     });
   }
 
-  // ── Display a chunk and its server-provided sentence value ────
   function showChunk(chunk) {
     currentChunk = chunk;
     document.getElementById('promptDisplay').textContent = chunk.promptText;
     document.getElementById('chunkInfo').textContent = 'Phrase ' + chunk.chunkNumber;
-    document.getElementById('sentenceValue').textContent =
-      (chunk.sentenceValue || 0).toLocaleString() + ' BIF';
-
+    document.getElementById('sentenceValue').textContent = (chunk.sentenceValue || 0).toLocaleString() + ' BIF';
     refreshBalance();
-
     document.getElementById('loadingMsg').style.display = 'none';
     document.getElementById('formArea').style.display = 'block';
     document.getElementById('audioPlayback').style.display = 'none';
@@ -203,7 +226,6 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
     mp3Chunks = [];
   }
 
-  // ── Upload queue (retry on failure) ──────────────────────────
   function processUploadQueue() {
     if (isUploading || uploadQueue.length === 0) return;
     isUploading = true;
@@ -225,7 +247,6 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
     });
   }
 
-  // ── Recording ─────────────────────────────────────────────────
   var audioContext, mediaStream, scriptProcessor, mp3Encoder;
   var mp3Chunks = [];
   var isRecording = false;
@@ -238,7 +259,7 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
 
   function submitError() {
     var errorText = document.getElementById('errorText').value.trim();
-    if (!errorText) { alert('Veuillez décrire le problème.'); return; }
+    if (!errorText) { alert('Veuillez decrire le probleme.'); return; }
     var chunk = currentChunk;
     fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -253,7 +274,7 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
     });
     document.getElementById('errorBox').style.display = 'none';
     document.getElementById('errorText').value = '';
-    document.getElementById('status').textContent = 'Rapport d\'erreur envoyé. Merci.';
+    document.getElementById('status').textContent = 'Rapport d\'erreur envoye. Merci.';
   }
 
   function toggleRecord() {
@@ -265,14 +286,12 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
     document.getElementById('audioPlayback').style.display = 'none';
     document.getElementById('submitBtn').style.display = 'none';
     document.getElementById('status').textContent = '';
-
     navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       .then(function(stream) {
         mediaStream = stream;
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         audioContext.resume();
-        var targetRate = 44100;
-        mp3Encoder = new lamejs.Mp3Encoder(1, targetRate, 128);
+        mp3Encoder = new lamejs.Mp3Encoder(1, 44100, 128);
         var source = audioContext.createMediaStreamSource(stream);
         scriptProcessor = audioContext.createScriptProcessor(16384, 1, 1);
         scriptProcessor.onaudioprocess = function(e) {
@@ -288,14 +307,14 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
         source.connect(scriptProcessor);
         scriptProcessor.connect(audioContext.destination);
         isRecording = true;
-        document.getElementById('recordBtn').textContent = 'Arrêter l\'enregistrement';
+        document.getElementById('recordBtn').textContent = 'Arreter l\'enregistrement';
         document.getElementById('recordBtn').classList.add('recording');
         startTimer();
       })
       .catch(function(err) {
         var msg = 'Erreur microphone : ' + err.name;
-        if (err.name === 'NotAllowedError') msg = 'Permission microphone refusée. Veuillez autoriser l\'accès et réessayer.';
-        if (err.name === 'NotFoundError') msg = 'Aucun microphone trouvé sur cet appareil.';
+        if (err.name === 'NotAllowedError') msg = 'Permission microphone refusee. Veuillez autoriser l\'acces et reessayer.';
+        if (err.name === 'NotFoundError') msg = 'Aucun microphone trouve sur cet appareil.';
         document.getElementById('status').textContent = msg;
       });
   }
@@ -304,7 +323,7 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
     isRecording = false;
     clearInterval(timerInterval);
     document.getElementById('timerDisplay').textContent = '';
-    document.getElementById('recordBtn').textContent = 'Ré-enregistrer';
+    document.getElementById('recordBtn').textContent = 'Re-enregistrer';
     document.getElementById('recordBtn').classList.remove('recording');
     if (scriptProcessor) scriptProcessor.disconnect();
     if (mediaStream) mediaStream.getTracks().forEach(function(t) { t.stop(); });
@@ -329,25 +348,21 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
     }, 1000);
   }
 
-  // ── Submit ────────────────────────────────────────────────────
   function submitForm() {
     var name = document.getElementById('nameField').value.trim();
     var lumicash = document.getElementById('lumicashField').value.trim();
     var sexe = document.querySelector('input[name="sexe"]:checked');
     var province = document.getElementById('provinceField').value;
-
-    if (!sexe) { alert('Veuillez sélectionner Homme ou Femme.'); return; }
-    if (!province) { alert('Veuillez sélectionner votre province.'); return; }
+    if (!sexe) { alert('Veuillez selectionner Homme ou Femme.'); return; }
+    if (!province) { alert('Veuillez selectionner votre province.'); return; }
     if (!name) { alert('Veuillez entrer votre nom.'); return; }
-    if (!/^[0-9]{8}$/.test(lumicash)) { alert('Veuillez entrer un numéro Lumicash valide à 8 chiffres.'); return; }
+    if (!/^[0-9]{8}$/.test(lumicash)) { alert('Veuillez entrer un numero Lumicash valide a 8 chiffres.'); return; }
     if (!mp3Chunks.length) { alert('Veuillez d\'abord enregistrer l\'audio.'); return; }
 
     var blob = new Blob(mp3Chunks, { type: 'audio/mp3' });
     var reader = new FileReader();
     var submittedChunk = currentChunk;
     currentChunk = null;
-
-    // Disable submit button immediately to prevent double-tap
     document.getElementById('submitBtn').disabled = true;
 
     reader.onloadend = function() {
@@ -365,8 +380,6 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
       processUploadQueue();
     };
     reader.readAsDataURL(blob);
-
-    // Load next chunk immediately; balance will refresh from server when it appears
     loadNextChunk();
   }
 
@@ -378,9 +391,6 @@ Ne vous inquiétez pas, vos gains initiaux ont été sauvegardés et vous seront
       return msg;
     }
   });
-
-  // ── Boot ──────────────────────────────────────────────────────
-  loadNextChunk();
 </script>
 </body>
 </html>
